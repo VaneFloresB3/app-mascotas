@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_pet_screen.dart';
+import 'pet_detail_screen.dart';
 import 'pets_providers.dart';
 
 class PetsScreen extends ConsumerWidget {
@@ -23,6 +24,11 @@ class PetsScreen extends ConsumerWidget {
             itemBuilder: (context, i) {
               final pet = list[i];
               return ListTile(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PetDetailScreen(petId: pet.id),
+                  ),
+                ),
                 leading: CircleAvatar(
                   child: Text(pet.species == 'dog' ? '🐶' : '🐱'),
                 ),
