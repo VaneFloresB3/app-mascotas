@@ -20,7 +20,9 @@ jobs:
           cache: true
 
       - name: Generar carpeta android
-        run: flutter create --platforms=android --project-name app_mascotas .
+        run: |
+          flutter create --platforms=android --project-name app_mascotas .
+          rm -f test/widget_test.dart
 
       - name: Dependencias
         run: flutter pub get
