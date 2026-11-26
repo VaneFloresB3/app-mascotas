@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/heat_calendar.dart';
+import '../../notifications/notification_service.dart';
 import '../pets/pets_providers.dart';
 import 'celo_providers.dart';
 
@@ -57,8 +58,9 @@ class _HeatFormScreenState extends ConsumerState<HeatFormScreen> {
 
     final notes = _notesController.text.trim();
     setState(() => _saving = true);
+    final db = ref.read(databaseProvider);
     await addHeatCycle(
-      ref.read(databaseProvider),
+      db,
       petId: widget.petId,
       start: _start,
       end: _ended ? _end : null,
@@ -69,6 +71,7 @@ class _HeatFormScreenState extends ConsumerState<HeatFormScreen> {
           : _contact == 'si',
       notes: notes.isEmpty ? null : notes,
     );
+    await syncReminders(db);
     if (mounted) Navigator.of(context).pop();
   }
 

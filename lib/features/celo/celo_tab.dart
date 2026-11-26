@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../data/database.dart';
 import '../../domain/heat_calendar.dart';
 import '../../domain/heat_prediction.dart';
+import '../../notifications/notification_service.dart';
 import '../pets/pets_providers.dart';
 import 'celo_providers.dart';
 import 'heat_form_screen.dart';
@@ -225,7 +226,9 @@ class _CeloTabState extends ConsumerState<CeloTab> {
       ),
     );
     if (ok == true) {
-      await deleteHeatCycle(ref.read(databaseProvider), c.id);
+      final db = ref.read(databaseProvider);
+      await deleteHeatCycle(db, c.id);
+      await syncReminders(db);
     }
   }
 

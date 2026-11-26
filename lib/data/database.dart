@@ -37,7 +37,8 @@ class Weights extends Table {
   RealColumn get kg => real()();
 }
 
-/// Eventos generales: orinal, comida, vacuna, visita, medicina, etc.
+/// Eventos: orinal, comida, vacuna, visita, medicina, etc.
+/// nextDate: próxima fecha (próxima dosis o cita), si aplica.
 class Events extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get petId =>
@@ -45,6 +46,7 @@ class Events extends Table {
   TextColumn get type => text()();
   DateTimeColumn get date => dateTime()();
   TextColumn get notes => text().nullable()();
+  DateTimeColumn get nextDate => dateTime().nullable()();
 }
 
 @DriftDatabase(tables: [Pets, HeatCycles, Weights, Events])
@@ -52,5 +54,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(events, events.nextDate);
+          }
+        },
+        beforeOpen: (details) async {
+          // Necesario para que el borrado en cascada funcione.
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
+      );
 }

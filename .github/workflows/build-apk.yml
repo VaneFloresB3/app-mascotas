@@ -24,6 +24,35 @@ jobs:
           flutter create --platforms=android --project-name app_mascotas .
           rm -f test/widget_test.dart
 
+      - name: Ajustes Android para notificaciones
+        run: |
+          python3 - <<'EOF'
+          import re, pathlib
+
+          perm = '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>'
+          manifest = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          s = manifest.read_text(encoding='utf-8')
+          if perm not in s:
+              s = re.sub(r'(<manifest[^>]*>)', lambda m: m.group(1) + '\n    ' + perm, s, count=1)
+              manifest.write_text(s, encoding='utf-8')
+
+          desugar = 'com.android.tools:desugar_jdk_libs:2.1.4'
+          kts = pathlib.Path('android/app/build.gradle.kts')
+          gvy = pathlib.Path('android/app/build.gradle')
+          if kts.exists():
+              s = kts.read_text(encoding='utf-8')
+              if 'isCoreLibraryDesugaringEnabled' not in s:
+                  s = re.sub(r'(compileOptions\s*\{)', lambda m: m.group(1) + '\n        isCoreLibraryDesugaringEnabled = true', s, count=1)
+                  s += '\ndependencies {\n    coreLibraryDesugaring("' + desugar + '")\n}\n'
+                  kts.write_text(s, encoding='utf-8')
+          elif gvy.exists():
+              s = gvy.read_text(encoding='utf-8')
+              if 'coreLibraryDesugaringEnabled' not in s:
+                  s = re.sub(r'(compileOptions\s*\{)', lambda m: m.group(1) + '\n        coreLibraryDesugaringEnabled true', s, count=1)
+                  s += '\ndependencies {\n    coreLibraryDesugaring "' + desugar + '"\n}\n'
+                  gvy.write_text(s, encoding='utf-8')
+          EOF
+
       - name: Dependencias
         run: flutter pub get
 
