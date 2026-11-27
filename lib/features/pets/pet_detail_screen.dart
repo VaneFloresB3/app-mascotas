@@ -81,6 +81,7 @@ class _PetDetailScreenState extends ConsumerState<PetDetailScreen> {
               _carnetView(pet),
               EventsTab(
                 petId: pet.id,
+                species: pet.species,
                 types: dailyTypes,
                 emptyText: 'Registra orinal, comidas o paseos.',
               ),
@@ -159,11 +160,12 @@ class _PetDetailScreenState extends ConsumerState<PetDetailScreen> {
             children: [
               EventsTab(
                 petId: pet.id,
+                species: pet.species,
                 types: healthTypes,
                 emptyText: 'Registra vacunas, citas o medicinas.',
                 highlightEventId: widget.highlightEventId,
               ),
-              WeightTab(petId: pet.id),
+              WeightTab(petId: pet.id, species: pet.species),
             ],
           ),
         ),

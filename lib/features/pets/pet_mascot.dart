@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 
+enum MascotActivity { profile, diary, health, weight }
+
 /// Retrato escalable para las fichas y el selector de especie.
 class PetMascot extends StatelessWidget {
-  const PetMascot({super.key, required this.species, required this.size});
+  const PetMascot(
+      {super.key,
+      required this.species,
+      required this.size,
+      this.activity = MascotActivity.profile});
+  final MascotActivity activity;
   final String species;
   final double size;
 
@@ -11,12 +18,14 @@ class PetMascot extends StatelessWidget {
         widthFactor: 1,
         heightFactor: 1,
         child: CustomPaint(
-            size: Size.square(size), painter: _Portrait(species == 'cat')),
+            size: Size.square(size),
+            painter: _Portrait(species == 'cat', activity)),
       );
 }
 
 class _Portrait extends CustomPainter {
-  const _Portrait(this.cat);
+  const _Portrait(this.cat, this.activity);
+  final MascotActivity activity;
   final bool cat;
 
   @override
@@ -125,21 +134,61 @@ class _Portrait extends CustomPainter {
           ..lineTo(80, 86)
           ..close(),
         ink);
-    // Estrella de bolsillo, compartida por ambas versiones.
-    shape(
+    void rounded(Rect rect, double radius, Color color) => shape(
         Path()
-          ..moveTo(80, 99)
-          ..lineTo(87, 109)
-          ..lineTo(99, 111)
-          ..lineTo(92, 121)
-          ..lineTo(93, 133)
-          ..lineTo(81, 129)
-          ..lineTo(70, 134)
-          ..lineTo(69, 121)
-          ..lineTo(60, 113)
-          ..lineTo(73, 109)
-          ..close(),
-        const Color(0xffffdf81));
+          ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius))),
+        color);
+    switch (activity) {
+      case MascotActivity.diary:
+        rounded(
+            const Rect.fromLTRB(58, 104, 101, 138), 4, const Color(0xffdcebf1));
+        canvas.drawLine(const Offset(65, 124), const Offset(79, 124), pen);
+        canvas.drawLine(const Offset(65, 130), const Offset(74, 130), pen);
+        canvas.save();
+        canvas.translate(83, 123);
+        canvas.rotate(.55);
+        rounded(
+            const Rect.fromLTRB(-4, -40, 4, -6), 2, const Color(0xffffcb79));
+        shape(
+            Path()
+              ..moveTo(-4, -6)
+              ..lineTo(0, 1)
+              ..lineTo(4, -6)
+              ..close(),
+            caramel);
+        canvas.restore();
+        break;
+      case MascotActivity.weight:
+        shape(Path()..addOval(const Rect.fromLTRB(65, 97, 95, 124)), caramel);
+        shape(Path()..addOval(const Rect.fromLTRB(72, 103, 88, 117)), ivory);
+        rounded(const Rect.fromLTRB(58, 111, 102, 139), 13,
+            const Color(0xffa6c9b2));
+        break;
+      case MascotActivity.health:
+        rounded(const Rect.fromLTRB(68, 98, 92, 115), 5, ivory);
+        rounded(
+            const Rect.fromLTRB(57, 106, 103, 136), 6, const Color(0xffffc6bc));
+        canvas.drawRect(
+            const Rect.fromLTRB(77, 113, 83, 129), Paint()..color = ivory);
+        canvas.drawRect(
+            const Rect.fromLTRB(72, 118, 88, 124), Paint()..color = ivory);
+        break;
+      case MascotActivity.profile:
+        shape(
+            Path()
+              ..moveTo(80, 99)
+              ..lineTo(87, 109)
+              ..lineTo(99, 111)
+              ..lineTo(92, 121)
+              ..lineTo(93, 133)
+              ..lineTo(81, 129)
+              ..lineTo(70, 134)
+              ..lineTo(69, 121)
+              ..lineTo(60, 113)
+              ..lineTo(73, 109)
+              ..close(),
+            const Color(0xffffdf81));
+    }
     for (final x in [59.0, 101.0]) {
       final paw = Path()
         ..addOval(
@@ -149,5 +198,6 @@ class _Portrait extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_Portrait oldDelegate) => cat != oldDelegate.cat;
+  bool shouldRepaint(_Portrait oldDelegate) =>
+      cat != oldDelegate.cat || activity != oldDelegate.activity;
 }
