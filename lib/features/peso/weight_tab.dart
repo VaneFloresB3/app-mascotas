@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database.dart';
 import '../../domain/formatting.dart';
 import '../pets/pets_providers.dart';
+import '../pets/pet_mascot.dart';
+import '../pets/activity_header.dart';
 
 /// Pesos de una mascota, del más antiguo al más reciente.
 final weightsProvider = StreamProvider.family<List<Weight>, int>((ref, petId) {
@@ -17,8 +19,9 @@ final weightsProvider = StreamProvider.family<List<Weight>, int>((ref, petId) {
 });
 
 class WeightTab extends ConsumerWidget {
-  const WeightTab({super.key, required this.petId});
+  const WeightTab({super.key, required this.petId, required this.species});
 
+  final String species;
   final int petId;
 
   @override
@@ -28,29 +31,36 @@ class WeightTab extends ConsumerWidget {
     return weightsAsync.when(
       data: (list) {
         return Scaffold(
-          body: list.isEmpty
-              ? const Center(child: Text('Registra el peso de tu mascota.'))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (list.length >= 2) ...[
-                      SizedBox(height: 200, child: _chart(list)),
-                      const SizedBox(height: 16),
-                    ],
-                    for (final w in list.reversed)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('${w.kg.toStringAsFixed(2)} kg'),
-                        subtitle: Text(fmtDate(w.date)),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _delete(ref, w.id),
-                        ),
-                      ),
-                  ],
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            children: [
+              ActivityHeader(
+                  species: species,
+                  activity: MascotActivity.weight,
+                  title: 'Historial de peso',
+                  color: const Color(0xffdcebdd),
+                  description: list.isEmpty
+                      ? 'Agrega su primera medición.'
+                      : 'Última medición: ${list.last.kg.toStringAsFixed(2)} kg'),
+              if (list.length >= 2) ...[
+                SizedBox(height: 200, child: _chart(list)),
+                const SizedBox(height: 16),
+              ],
+              for (final w in list.reversed)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('${w.kg.toStringAsFixed(2)} kg'),
+                  subtitle: Text(fmtDate(w.date)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _delete(ref, w.id),
+                  ),
                 ),
+            ],
+          ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _addWeight(context, ref),
+            tooltip: 'Registrar peso',
             child: const Icon(Icons.add),
           ),
         );
@@ -71,6 +81,7 @@ class WeightTab extends ConsumerWidget {
         lineBarsData: [
           LineChartBarData(
             spots: spots,
+            color: const Color(0xff49775e),
             isCurved: true,
             barWidth: 3,
             dotData: FlDotData(show: true),

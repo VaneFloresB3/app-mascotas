@@ -44,15 +44,17 @@ class PetDetailScreen extends ConsumerWidget {
           _ResumenView(pet: pet),
           EventsTab(
             petId: pet.id,
+            species: pet.species,
             types: dailyTypes,
             emptyText: 'Registra orinal, comidas o paseos.',
           ),
           EventsTab(
             petId: pet.id,
+            species: pet.species,
             types: healthTypes,
             emptyText: 'Registra vacunas, citas o medicinas.',
           ),
-          WeightTab(petId: pet.id),
+          WeightTab(petId: pet.id, species: pet.species),
           if (showCelo) CeloTab(pet: pet),
         ];
 
