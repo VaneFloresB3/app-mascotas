@@ -11,6 +11,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,6 +76,50 @@ jobs:
                   p.write_text(s, encoding='utf-8')
           EOF
 
+      - name: Configurar firma de release
+        run: |
+          python3 - <<'EOF'
+          import base64, os, pathlib, re
+
+          if not os.environ.get('KEYSTORE_BASE64'):
+              print('Sin secreto KEYSTORE_BASE64: se usa la firma de depuración (las actualizaciones no funcionarán).')
+              raise SystemExit(0)
+
+          pathlib.Path('android/app/koinucare-release.jks').write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64']))
+
+          kts = pathlib.Path('android/app/build.gradle.kts')
+          gvy = pathlib.Path('android/app/build.gradle')
+          if kts.exists():
+              s = kts.read_text(encoding='utf-8')
+              block = '''signingConfigs {
+                  create("release") {
+                      storeFile = file("koinucare-release.jks")
+                      storePassword = System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("KEY_ALIAS")
+                      keyPassword = System.getenv("KEY_PASSWORD")
+                  }
+              }
+              '''
+              s = s.replace('buildTypes {', block + 'buildTypes {', 1)
+              s = s.replace('signingConfigs.getByName("debug")', 'signingConfigs.getByName("release")')
+              kts.write_text(s, encoding='utf-8')
+          elif gvy.exists():
+              s = gvy.read_text(encoding='utf-8')
+              block = '''signingConfigs {
+                  release {
+                      storeFile file('koinucare-release.jks')
+                      storePassword System.getenv('KEYSTORE_PASSWORD')
+                      keyAlias System.getenv('KEY_ALIAS')
+                      keyPassword System.getenv('KEY_PASSWORD')
+                  }
+              }
+              '''
+              s = s.replace('buildTypes {', block + 'buildTypes {', 1)
+              s = s.replace('signingConfigs.debug', 'signingConfigs.release')
+              gvy.write_text(s, encoding='utf-8')
+          print('Firma de release configurada.')
+          EOF
+
       - name: Dependencias
         run: flutter pub get
 
@@ -84,7 +133,7 @@ jobs:
         run: flutter test
 
       - name: Compilar APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-number=${{ github.run_number }}
 
       - name: Nombrar APK
         run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/KoinuCare.apk
