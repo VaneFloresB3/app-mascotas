@@ -4,8 +4,10 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../data/database.dart';
 import '../../domain/heat_calendar.dart';
+import '../../domain/heat_phase.dart';
 import '../../domain/heat_prediction.dart';
 import '../../notifications/notification_service.dart';
+import '../peso/weight_tab.dart';
 import '../pets/pets_providers.dart';
 import 'celo_providers.dart';
 import 'heat_form_screen.dart';
@@ -26,19 +28,23 @@ class _CeloTabState extends ConsumerState<CeloTab> {
   @override
   Widget build(BuildContext context) {
     final cyclesAsync = ref.watch(heatCyclesProvider(widget.pet.id));
+    // El último peso ajusta el punto de partida según el tamaño.
+    final weights = ref.watch(weightsProvider(widget.pet.id)).valueOrNull ?? const <Weight>[];
     return cyclesAsync.when(
-      data: (cycles) => _content(cycles),
+      data: (cycles) => _content(cycles, weights),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('Error: $error')),
     );
   }
 
-  Widget _content(List<HeatCycle> cycles) {
+  Widget _content(List<HeatCycle> cycles, List<Weight> weights) {
     final starts = cycles.map((c) => dayOnly(c.startDate)).toList();
+    final now = DateTime.now();
     final prediction = predictNextHeat(
       species: widget.pet.species,
       starts: starts,
-      now: DateTime.now(),
+      now: now,
+      weightKg: _latestKg(weights),
     );
 
     final bleeding = <DateTime>{};
@@ -50,6 +56,17 @@ class _CeloTabState extends ConsumerState<CeloTab> {
       }
     }
     final estimated = prediction == null ? null : dayOnly(prediction.estimated);
+    final window = <DateTime>{};
+    if (prediction != null) {
+      var d = dayOnly(prediction.windowStart);
+      final end = dayOnly(prediction.windowEnd);
+      while (!d.isAfter(end)) {
+        window.add(d);
+        d = DateTime(d.year, d.month, d.day + 1);
+      }
+    }
+
+    final open = cycles.where((c) => c.endDate == null).toList();
 
     return ListView(
       padding: const EdgeInsets.all(12),
@@ -57,6 +74,10 @@ class _CeloTabState extends ConsumerState<CeloTab> {
         _disclaimer(),
         const SizedBox(height: 12),
         _predictionCard(prediction, starts.isEmpty),
+        if (open.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _phaseCard(open.first, now),
+        ],
         const SizedBox(height: 12),
         TableCalendar(
           firstDay: DateTime(2020),
@@ -74,9 +95,9 @@ class _CeloTabState extends ConsumerState<CeloTab> {
           },
           calendarBuilders: CalendarBuilders(
             defaultBuilder: (context, day, focused) =>
-                _dayCell(day, bleeding, fertile, estimated),
+                _dayCell(day, bleeding, fertile, estimated, window),
             todayBuilder: (context, day, focused) =>
-                _dayCell(day, bleeding, fertile, estimated, today: true),
+                _dayCell(day, bleeding, fertile, estimated, window, today: true),
           ),
         ),
         const SizedBox(height: 8),
@@ -106,6 +127,13 @@ class _CeloTabState extends ConsumerState<CeloTab> {
     );
   }
 
+  /// Último peso registrado, en kilos.
+  double? _latestKg(List<Weight> weights) {
+    if (weights.isEmpty) return null;
+    final latest = weights.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
+    return latest.kg;
+  }
+
   Widget _disclaimer() {
     return Card(
       color: Colors.amber.shade100,
@@ -123,7 +151,8 @@ class _CeloTabState extends ConsumerState<CeloTab> {
     final String text;
     if (p != null) {
       text = 'Próximo celo estimado: ${_fmt(p.estimated)}\n'
-          'Rango: ${_fmt(p.earliest)} a ${_fmt(p.latest)}';
+          'Ventana de seguridad: ${_fmt(p.windowStart)} a ${_fmt(p.windowEnd)}\n'
+          'Rango observado: ${_fmt(p.earliest)} a ${_fmt(p.latest)}';
     } else if (noHistory) {
       text = 'Registra un celo para ver la estimación del próximo.';
     } else {
@@ -134,11 +163,51 @@ class _CeloTabState extends ConsumerState<CeloTab> {
     );
   }
 
+  /// Etapa del celo en curso, con el cuidado de esta semana.
+  Widget _phaseCard(HeatCycle open, DateTime now) {
+    final info = currentHeatPhase(
+      species: widget.pet.species,
+      start: open.startDate,
+      now: now,
+    );
+    if (info == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(
+            'Las gatas no pasan por etapas fijas. Sigue su celo en el registro.',
+          ),
+        ),
+      );
+    }
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Día ${info.dayOfHeat} del celo · ${info.title}',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text(info.tip),
+            const SizedBox(height: 6),
+            const Text(
+              'Etapas aproximadas: proestro unos 9 días, estro unos 9 días, luego diestro.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _dayCell(
     DateTime day,
     Set<DateTime> bleeding,
     Set<DateTime> fertile,
-    DateTime? estimated, {
+    DateTime? estimated,
+    Set<DateTime> window, {
     bool today = false,
   }) {
     final d = dayOnly(day);
@@ -149,6 +218,8 @@ class _CeloTabState extends ConsumerState<CeloTab> {
       color = Colors.pink.shade200;
     } else if (fertile.contains(d)) {
       color = Colors.orange.shade200;
+    } else if (window.contains(d)) {
+      color = Colors.pink.shade50;
     }
 
     return Container(
@@ -171,6 +242,7 @@ class _CeloTabState extends ConsumerState<CeloTab> {
         _dot(Colors.red.shade300, 'Sangrado'),
         _dot(Colors.orange.shade200, 'Ventana fértil (estimada)'),
         _dot(Colors.pink.shade200, 'Próximo celo (estimado)'),
+        _dot(Colors.pink.shade50, 'Ventana de seguridad'),
       ],
     );
   }

@@ -15,6 +15,8 @@ class Pets extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   /// Ruta relativa de la foto privada, por ejemplo koinucare_fotos/x.jpg.
   TextColumn get photoPath => text().nullable()();
+  /// Fecha de fallecimiento. Si existe, la mascota pasa a Recuerdos y deja de generar avisos.
+  DateTimeColumn get deceasedDate => dateTime().nullable()();
 }
 
 /// Registro de celo. Solo aplica a hembras no esterilizadas.
@@ -56,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +70,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             // Las mascotas existentes conservan sus datos y empiezan sin foto.
             await m.addColumn(pets, pets.photoPath);
+          }
+          if (from < 4) {
+            await m.addColumn(pets, pets.deceasedDate);
           }
         },
         beforeOpen: (details) async {

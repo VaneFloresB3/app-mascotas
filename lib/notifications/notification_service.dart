@@ -3,6 +3,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/database.dart';
+import '../data/latest_weights.dart';
 import '../data/settings.dart';
 import '../domain/reminders.dart';
 
@@ -28,7 +29,10 @@ Future<void> requestNotificationPermission() async {
 /// Llamar después de cualquier cambio en mascotas, celos, eventos o configuración.
 Future<void> syncReminders(AppDatabase db) async {
   final hour = await getReminderHour();
-  final pets = await db.select(db.pets).get();
+  // Las mascotas fallecidas no generan avisos.
+  final pets = await (db.select(db.pets)
+        ..where((t) => t.deceasedDate.isNull()))
+      .get();
   final cycles = await db.select(db.heatCycles).get();
   final events = await (db.select(db.events)
         ..where((e) => e.nextDate.isNotNull()))
@@ -75,6 +79,7 @@ Future<void> syncReminders(AppDatabase db) async {
         ),
     ],
     heatStarts: heatStarts,
+    latestKg: await latestWeightByPet(db),
     openCycle: openCycle,
     events: eventInfos,
     now: DateTime.now(),

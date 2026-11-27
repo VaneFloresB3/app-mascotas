@@ -55,7 +55,7 @@ int _id(int petId, int kind, int sub) => petId * 1000000 + kind * 100000 + sub;
 
 /// Calcula todos los recordatorios futuros.
 ///
-/// - Celo: aviso 7 días antes del estimado, el día estimado, inicio de la
+/// - Celo: aviso 14 días antes del estimado, el día estimado, inicio de la
 ///   ventana fértil (perras) y recordatorios diarios durante un celo en curso.
 /// - Eventos con próxima fecha: aviso el día anterior a la hora elegida.
 List<ReminderSpec> buildReminders({
@@ -65,6 +65,7 @@ List<ReminderSpec> buildReminders({
   required List<EventInfo> events,
   required DateTime now,
   required int hour,
+  Map<int, double> latestKg = const {},
 }) {
   final out = <ReminderSpec>[];
 
@@ -87,6 +88,7 @@ List<ReminderSpec> buildReminders({
       species: pet.species,
       starts: starts,
       now: now,
+      weightKg: latestKg[pet.id],
     );
 
     if (prediction != null) {
@@ -94,8 +96,8 @@ List<ReminderSpec> buildReminders({
       add(
         _id(pet.id, 1, 0),
         'Próximo celo de ${pet.name}',
-        'Se acerca el celo estimado. Revisa su plan de cuidado.',
-        at(DateTime(est.year, est.month, est.day - 7)),
+        'Faltan unas dos semanas para su celo estimado. Revisa su plan de cuidado.',
+        at(DateTime(est.year, est.month, est.day - 14)),
       );
       add(
         _id(pet.id, 2, 0),

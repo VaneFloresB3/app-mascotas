@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
+import '../../data/latest_weights.dart';
 import '../../domain/agenda.dart';
 import '../pets/pets_providers.dart';
 
@@ -31,7 +32,10 @@ final agendaProvider = StreamProvider<List<AgendaItem>>((ref) {
 });
 
 Future<List<AgendaItem>> _loadAgenda(AppDatabase db, DateTime now) async {
-  final pets = await db.select(db.pets).get();
+  // Las mascotas fallecidas no aparecen en «Hoy».
+  final pets = await (db.select(db.pets)
+        ..where((t) => t.deceasedDate.isNull()))
+      .get();
   final events = await (db.select(db.events)
         ..where((e) => e.nextDate.isNotNull()))
       .get();
@@ -66,5 +70,6 @@ Future<List<AgendaItem>> _loadAgenda(AppDatabase db, DateTime now) async {
     ],
     heatStarts: heatStarts,
     now: now,
+    latestKg: await latestWeightByPet(db),
   );
 }

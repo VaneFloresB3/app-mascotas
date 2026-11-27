@@ -90,6 +90,7 @@ List<AgendaItem> buildAgenda({
   required List<AgendaEvent> events,
   required Map<int, List<DateTime>> heatStarts,
   required DateTime now,
+  Map<int, double> latestKg = const {},
 }) {
   final today = dayOnly(now);
   final tomorrow = DateTime(today.year, today.month, today.day + 1);
@@ -124,6 +125,7 @@ List<AgendaItem> buildAgenda({
       species: pet.species,
       starts: heatStarts[pet.id] ?? const <DateTime>[],
       now: now,
+      weightKg: latestKg[pet.id],
     );
     if (prediction == null) continue;
     final day = dayOnly(prediction.estimated);

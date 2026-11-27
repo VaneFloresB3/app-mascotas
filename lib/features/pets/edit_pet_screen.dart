@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../data/database.dart';
 import '../../data/photo_storage.dart';
+import '../../domain/formatting.dart';
 import '../../notifications/notification_service.dart';
 import 'pet_photo_field.dart';
 import 'pets_providers.dart';
@@ -21,6 +22,7 @@ class EditPetScreen extends ConsumerStatefulWidget {
 class _EditPetScreenState extends ConsumerState<EditPetScreen> {
   late final TextEditingController _nameController;
   late bool _neutered;
+  late DateTime? _deceased;
   bool _saving = false;
 
   // Cambios pendientes de foto. Nada se copia hasta pulsar Guardar.
@@ -32,6 +34,25 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.pet.name);
     _neutered = widget.pet.neutered;
+    _deceased = widget.pet.deceasedDate;
+  }
+
+  Future<void> _toggleDeceased(bool value) async {
+    if (!value) {
+      setState(() => _deceased = null);
+      return;
+    }
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: today,
+      firstDate: DateTime(2000),
+      lastDate: today,
+      helpText: 'Fecha de fallecimiento',
+    );
+    // Si cancela el selector, no cambia nada.
+    if (picked == null || !mounted) return;
+    setState(() => _deceased = picked);
   }
 
   @override
@@ -86,6 +107,7 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
           name: Value(name),
           neutered: Value(_neutered),
           photoPath: Value(newPhoto),
+          deceasedDate: Value(_deceased),
         ),
       );
     } catch (_) {
@@ -163,6 +185,14 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
             title: const Text('Esterilizada'),
             value: _neutered,
             onChanged: (v) => setState(() => _neutered = v),
+          ),
+          SwitchListTile(
+            title: const Text('Ya no está con nosotros'),
+            subtitle: Text(_deceased == null
+                ? 'Pasará a Recuerdos y dejará de generar avisos.'
+                : 'Falleció el ${fmtDate(_deceased!)}'),
+            value: _deceased != null,
+            onChanged: _toggleDeceased,
           ),
           const SizedBox(height: 24),
           FilledButton(

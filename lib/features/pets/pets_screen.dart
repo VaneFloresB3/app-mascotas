@@ -43,6 +43,7 @@ class _PetsScreenState extends ConsumerState<PetsScreen>
   @override
   Widget build(BuildContext context) {
     final pets = ref.watch(petsProvider);
+    final deceased = ref.watch(deceasedPetsProvider).valueOrNull ?? const <Pet>[];
     final agenda = ref.watch(agendaProvider).valueOrNull ?? const <AgendaItem>[];
 
     void addPet() => Navigator.of(context)
@@ -59,8 +60,11 @@ class _PetsScreenState extends ConsumerState<PetsScreen>
       body: pets.when(
         data: (list) => ListView.builder(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-            itemCount: list.length + 1,
+            itemCount: list.length + 1 + (deceased.isEmpty ? 0 : 1),
             itemBuilder: (context, i) {
+              if (i == list.length + 1) {
+                return _RecuerdosSection(pets: deceased);
+              }
               if (i == 0) {
                 return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,6 +146,48 @@ class _PetsScreenState extends ConsumerState<PetsScreen>
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Error: $error')),
       ),
+    );
+  }
+}
+
+/// Mascotas que ya no están con nosotros. Se muestran aparte y sin avisos.
+class _RecuerdosSection extends StatelessWidget {
+  const _RecuerdosSection({required this.pets});
+
+  final List<Pet> pets;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 28, 4, 6),
+          child: Text('Recuerdos',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 0, 4, 10),
+          child: Text('Las que nos acompañaron. Sus fotos y fechas quedan aquí.'),
+        ),
+        for (final pet in pets)
+          Card(
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: PetAvatar(
+                  photoPath: pet.photoPath, species: pet.species, size: 48),
+              title: Text(pet.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(pet.deceasedDate == null
+                  ? (pet.species == 'dog' ? 'Perro' : 'Gato')
+                  : 'Nos acompañó hasta el ${fmtDate(pet.deceasedDate!)}'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => PetDetailScreen(petId: pet.id))),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -6,7 +6,7 @@ void main() {
     const PetInfo(id: 1, name: 'Peque', species: 'dog', sex: 'female', neutered: false),
   ];
 
-  test('avisa 7 días antes del celo estimado a la hora elegida', () {
+  test('avisa 14 días antes del celo estimado a la hora elegida', () {
     final r = buildReminders(
       pets: dogs,
       heatStarts: {1: [DateTime(2026, 1, 1)]},
@@ -17,8 +17,8 @@ void main() {
     );
 
     final aviso = r.firstWhere((x) => x.title == 'Próximo celo de Peque');
-    // Estimado: 2 de julio de 2026. Aviso: 25 de junio a las 19:00.
-    expect(aviso.when, DateTime(2026, 6, 25, 19));
+    // Estimado: 2 de julio de 2026. Aviso: 18 de junio a las 19:00.
+    expect(aviso.when, DateTime(2026, 6, 18, 19));
   });
 
   test('no programa recordatorios que ya pasaron', () {

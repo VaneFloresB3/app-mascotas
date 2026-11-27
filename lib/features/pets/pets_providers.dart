@@ -10,11 +10,21 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-/// Lista de mascotas ordenada por nombre, se actualiza sola al cambiar la base.
+/// Mascotas activas ordenadas por nombre, se actualiza sola al cambiar la base.
 final petsProvider = StreamProvider<List<Pet>>((ref) {
   final db = ref.watch(databaseProvider);
   final query = db.select(db.pets)
+    ..where((t) => t.deceasedDate.isNull())
     ..orderBy([(t) => OrderingTerm(expression: t.name)]);
+  return query.watch();
+});
+
+/// Mascotas fallecidas, para la sección de Recuerdos. Más recientes primero.
+final deceasedPetsProvider = StreamProvider<List<Pet>>((ref) {
+  final db = ref.watch(databaseProvider);
+  final query = db.select(db.pets)
+    ..where((t) => t.deceasedDate.isNotNull())
+    ..orderBy([(t) => OrderingTerm.desc(t.deceasedDate)]);
   return query.watch();
 });
 
