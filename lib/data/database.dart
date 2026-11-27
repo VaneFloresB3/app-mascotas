@@ -51,6 +51,8 @@ class Events extends Table {
   DateTimeColumn get date => dateTime()();
   TextColumn get notes => text().nullable()();
   DateTimeColumn get nextDate => dateTime().nullable()();
+  /// Foto de la etiqueta o del documento (carnet médico). Ruta relativa privada.
+  TextColumn get photoPath => text().nullable()();
 }
 
 @DriftDatabase(tables: [Pets, HeatCycles, Weights, Events])
@@ -58,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +75,10 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(pets, pets.deceasedDate);
+          }
+          if (from < 5) {
+            // Los registros existentes siguen sin foto.
+            await m.addColumn(events, events.photoPath);
           }
         },
         beforeOpen: (details) async {

@@ -17,9 +17,9 @@ const _maxSide = 512;
 ///
 /// La imagen se gira según su orientación, se reduce y se guarda como JPG.
 /// El nombre es único, así dos fotos con el mismo nombre no se pisan.
-Future<String> savePetPhoto(String sourcePath) async {
+Future<String> savePetPhoto(String sourcePath, {int maxSide = _maxSide}) async {
   final bytes = await File(sourcePath).readAsBytes();
-  final jpg = await compute(_processImage, bytes);
+  final jpg = await compute(_processImage, (bytes, maxSide));
 
   final docs = await getApplicationDocumentsDirectory();
   final dir = Directory(p.join(docs.path, _folderName));
@@ -45,14 +45,15 @@ Future<void> deletePetPhoto(String? relativePath) async {
   if (file != null) await file.delete();
 }
 
-Uint8List _processImage(Uint8List bytes) {
+Uint8List _processImage((Uint8List, int) job) {
+  final (bytes, maxSide) = job;
   final decoded = img.decodeImage(bytes);
   if (decoded == null) {
     throw const FormatException('La imagen no se pudo leer.');
   }
   final upright = img.bakeOrientation(decoded);
   final longest = max(upright.width, upright.height);
-  final scale = longest > _maxSide ? _maxSide / longest : 1.0;
+  final scale = longest > maxSide ? maxSide / longest : 1.0;
   final resized = scale < 1
       ? img.copyResize(
           upright,

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
+import '../../data/photo_storage.dart';
 import '../../domain/event_types.dart';
 import '../../domain/formatting.dart';
 import '../../notifications/notification_service.dart';
@@ -49,6 +52,12 @@ class EventsTab extends ConsumerWidget {
                       tileColor: e.id == highlightEventId
                           ? Theme.of(context).colorScheme.secondaryContainer
                           : null,
+                      leading: e.photoPath == null
+                          ? null
+                          : _Thumb(photoPath: e.photoPath!),
+                      onTap: e.photoPath == null
+                          ? null
+                          : () => _verFoto(context, e.photoPath!),
                       title: Text(eventTypeLabels[e.type] ?? e.type),
                       subtitle: Text(
                         extra.isEmpty
@@ -82,5 +91,59 @@ class EventsTab extends ConsumerWidget {
     final db = ref.read(databaseProvider);
     await deleteEvent(db, id);
     await syncReminders(db);
+  }
+
+  void _verFoto(BuildContext context, String photoPath) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        child: FutureBuilder<File?>(
+          future: petPhotoFile(photoPath),
+          builder: (ctx, snap) {
+            final file = snap.data;
+            if (snap.connectionState != ConnectionState.done) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (file == null) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('La foto ya no está disponible.'),
+              );
+            }
+            return InteractiveViewer(child: Image.file(file));
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Miniatura de la foto de una etiqueta. Muestra un icono si el archivo falta.
+class _Thumb extends StatelessWidget {
+  const _Thumb({required this.photoPath});
+
+  final String photoPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<File?>(
+      future: petPhotoFile(photoPath),
+      builder: (context, snap) {
+        final file = snap.data;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: file == null
+                ? const Icon(Icons.image_not_supported_outlined)
+                : Image.file(file, fit: BoxFit.cover),
+          ),
+        );
+      },
+    );
   }
 }

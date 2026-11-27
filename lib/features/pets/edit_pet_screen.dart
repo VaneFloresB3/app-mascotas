@@ -7,6 +7,7 @@ import '../../data/database.dart';
 import '../../data/photo_storage.dart';
 import '../../domain/formatting.dart';
 import '../../notifications/notification_service.dart';
+import '../eventos/events_providers.dart';
 import 'pet_photo_field.dart';
 import 'pets_providers.dart';
 
@@ -153,6 +154,9 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
     if (ok != true) return;
 
     final db = ref.read(databaseProvider);
+    // Las fotos de las etiquetas se borran antes, porque el borrado de la mascota
+    // elimina también sus registros.
+    await deleteEventPhotosOfPet(db, widget.pet.id);
     await (db.delete(db.pets)..where((t) => t.id.equals(widget.pet.id))).go();
     await deletePetPhoto(widget.pet.photoPath);
     await syncReminders(db);

@@ -1,12 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../data/photo_storage.dart';
 import '../../domain/event_types.dart';
 import '../../domain/formatting.dart';
 import '../../domain/heat_calendar.dart';
 import '../../notifications/notification_service.dart';
 import '../pets/pets_providers.dart';
 import 'events_providers.dart';
+
+/// Lado largo de la foto de una etiqueta. Debe ser alto para que se pueda leer el texto.
+const _labelMaxSide = 1280;
 
 class EventFormScreen extends ConsumerStatefulWidget {
   const EventFormScreen({super.key, required this.petId, required this.types});
@@ -26,6 +33,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   bool _hasNext = false;
   DateTime? _nextDate;
   bool _saving = false;
+  XFile? _photo;
 
   @override
   void initState() {
@@ -40,6 +48,14 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   bool get _allowsNext => _type != null && typesWithNextDate.contains(_type);
+
+  /// Solo los registros de salud (carnet) guardan foto de la etiqueta.
+  bool get _allowsPhoto => _type != null && healthTypes.contains(_type);
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked != null) setState(() => _photo = picked);
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -92,14 +108,31 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
     setState(() => _saving = true);
     final db = ref.read(databaseProvider);
-    await addEvent(
-      db,
-      petId: widget.petId,
-      type: type,
-      date: when,
-      notes: notes.isEmpty ? null : notes,
-      nextDate: _allowsNext && _hasNext ? _nextDate : null,
-    );
+    String? photoPath;
+    try {
+      if (_allowsPhoto && _photo != null) {
+        photoPath = await savePetPhoto(_photo!.path, maxSide: _labelMaxSide);
+      }
+      await addEvent(
+        db,
+        petId: widget.petId,
+        type: type,
+        date: when,
+        notes: notes.isEmpty ? null : notes,
+        nextDate: _allowsNext && _hasNext ? _nextDate : null,
+        photoPath: photoPath,
+      );
+    } catch (_) {
+      // Si la foto falla, se borra la copia y el registro no se guarda a medias.
+      await deletePetPhoto(photoPath);
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+        );
+      }
+      return;
+    }
     await syncReminders(db);
     if (mounted) Navigator.of(context).pop();
   }
@@ -121,6 +154,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
             onChanged: (v) => setState(() {
               _type = v;
               if (!_allowsNext) _hasNext = false;
+              if (!_allowsPhoto) _photo = null;
             }),
           ),
           const SizedBox(height: 8),
@@ -156,6 +190,30 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 trailing: const Icon(Icons.event),
                 onTap: _pickNext,
               ),
+          ],
+          if (_allowsPhoto) ...[
+            const SizedBox(height: 8),
+            const Text('Foto de la etiqueta (opcional)'),
+            const SizedBox(height: 8),
+            if (_photo != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(File(_photo!.path), height: 180, fit: BoxFit.cover),
+              ),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: _pickPhoto,
+                  icon: const Icon(Icons.photo_camera_back_outlined),
+                  label: Text(_photo == null ? 'Elegir foto' : 'Cambiar foto'),
+                ),
+                if (_photo != null)
+                  TextButton(
+                    onPressed: () => setState(() => _photo = null),
+                    child: const Text('Quitar foto'),
+                  ),
+              ],
+            ),
           ],
           const SizedBox(height: 8),
           TextField(
