@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'theme.dart';
 import 'data/database.dart';
 import 'data/database_connection.dart';
 import 'features/pets/pets_screen.dart';
@@ -37,11 +38,9 @@ class AppMascotas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'App para mascotas',
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF4CAF7A),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      title: 'KoinuCare',
+      theme: koinuTheme(),
       home: const PetsScreen(),
     );
   }

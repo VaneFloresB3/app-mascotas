@@ -1,3 +1,4 @@
+import 'pet_mascot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -86,11 +87,25 @@ class _ResumenView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Especie: ${pet.species == 'dog' ? 'Perro' : 'Gato'}'),
-        Text('Sexo: ${pet.sex == 'female' ? 'Hembra' : 'Macho'}'),
-        Text('Esterilizada: ${pet.neutered ? 'Sí' : 'No'}'),
-        if (pet.birthDate != null)
-          Text('Nacimiento: ${fmtDate(pet.birthDate!)}'),
+        Card(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PetMascot(species: pet.species, size: 96),
+                      const SizedBox(height: 8),
+                      Text('Ficha de ' + pet.name,
+                          style: Theme.of(context).textTheme.headlineSmall),
+                      const SizedBox(height: 12),
+                      Text(
+                          'Especie: ${pet.species == 'dog' ? 'Perro' : 'Gato'}'),
+                      Text('Sexo: ${pet.sex == 'female' ? 'Hembra' : 'Macho'}'),
+                      Text('Esterilizada: ${pet.neutered ? 'Sí' : 'No'}'),
+                      if (pet.birthDate != null)
+                        Text('Nacimiento: ${fmtDate(pet.birthDate!)}'),
+                    ]))),
         const SizedBox(height: 24),
         FilledButton.icon(
           onPressed: () => Navigator.of(context).push(

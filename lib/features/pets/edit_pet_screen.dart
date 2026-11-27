@@ -1,3 +1,4 @@
+import 'pet_mascot.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,6 +87,7 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PetMascot(species: widget.pet.species, size: 112),
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(labelText: 'Nombre'),
