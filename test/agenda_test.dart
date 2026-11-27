@@ -59,8 +59,8 @@ void main() {
     final items = buildAgenda(
       pets: [pet(1, 'Luna', sex: 'female')],
       events: const [],
-      // Inicio hace 120 días: el estimado cae hoy.
-      heatStarts: {1: [now.subtract(const Duration(days: 120))]},
+      // Sin historial, el estimado es inicio + 182 días: 29/05 + 182 = 27/11.
+      heatStarts: {1: [DateTime(2026, 5, 29)]},
       now: now,
     );
 
