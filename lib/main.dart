@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,17 +9,26 @@ import 'data/database_connection.dart';
 import 'features/pets/pets_screen.dart';
 import 'notifications/notification_service.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await initNotifications();
-  await requestNotificationPermission();
-
-  // Reconstruye los recordatorios al abrir la app.
-  final db = AppDatabase(openConnection());
-  await syncReminders(db);
-  await db.close();
-
+  // La app se muestra primero. Las notificaciones se preparan en segundo plano,
+  // así un problema con ellas nunca deja la pantalla de arranque congelada.
   runApp(const ProviderScope(child: AppMascotas()));
+  unawaited(_iniciarNotificaciones());
+}
+
+Future<void> _iniciarNotificaciones() async {
+  try {
+    await initNotifications();
+    await requestNotificationPermission();
+
+    // Reconstruye los recordatorios al abrir la app.
+    final db = AppDatabase(openConnection());
+    await syncReminders(db);
+    await db.close();
+  } catch (error, stack) {
+    debugPrint('Error al preparar notificaciones: $error\n$stack');
+  }
 }
 
 class AppMascotas extends StatelessWidget {
