@@ -16,11 +16,15 @@ class EventsTab extends ConsumerWidget {
     required this.petId,
     required this.types,
     required this.emptyText,
+    this.highlightEventId,
   });
 
   final int petId;
   final Set<String> types;
   final String emptyText;
+
+  /// Registro que se destaca al abrirlo desde la portada.
+  final int? highlightEventId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,6 +46,9 @@ class EventsTab extends ConsumerWidget {
                       if (next != null) 'Próxima: ${fmtDate(next)}',
                     ].join(' · ');
                     return ListTile(
+                      tileColor: e.id == highlightEventId
+                          ? Theme.of(context).colorScheme.secondaryContainer
+                          : null,
                       title: Text(eventTypeLabels[e.type] ?? e.type),
                       subtitle: Text(
                         extra.isEmpty

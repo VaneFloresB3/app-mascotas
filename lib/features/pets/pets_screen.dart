@@ -1,19 +1,50 @@
-import 'pet_mascot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/database.dart';
+import '../../domain/agenda.dart';
+import '../../domain/formatting.dart';
 import '../../theme.dart';
+import '../agenda/agenda_providers.dart';
 import '../settings/settings_screen.dart';
 import 'add_pet_screen.dart';
+import 'pet_avatar.dart';
 import 'pet_detail_screen.dart';
+import 'pet_mascot.dart';
 import 'pets_providers.dart';
 
-class PetsScreen extends ConsumerWidget {
+class PetsScreen extends ConsumerStatefulWidget {
   const PetsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PetsScreen> createState() => _PetsScreenState();
+}
+
+class _PetsScreenState extends ConsumerState<PetsScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Al volver a la app se recalcula «Hoy», por si cambió el día.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) ref.invalidate(agendaProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pets = ref.watch(petsProvider);
+    final agenda = ref.watch(agendaProvider).valueOrNull ?? const <AgendaItem>[];
+
     void addPet() => Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const AddPetScreen()));
     return Scaffold(
@@ -81,6 +112,7 @@ class PetsScreen extends ConsumerWidget {
                                             label:
                                                 const Text('Agregar mascota')),
                                       ])))),
+                      if (list.isNotEmpty) _HoySection(items: agenda),
                       if (list.isNotEmpty)
                         const Padding(
                             padding: EdgeInsets.fromLTRB(4, 24, 4, 6),
@@ -96,7 +128,10 @@ class PetsScreen extends ConsumerWidget {
                   child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
-                      leading: PetMascot(species: pet.species, size: 48),
+                      leading: PetAvatar(
+                          photoPath: pet.photoPath,
+                          species: pet.species,
+                          size: 48),
                       title: Text(pet.name,
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(dog ? 'Perro' : 'Gato'),
@@ -108,6 +143,76 @@ class PetsScreen extends ConsumerWidget {
         error: (error, _) => Center(child: Text('Error: $error')),
       ),
     );
+  }
+}
+
+/// Cuidados de hoy y mañana. Al tocar una fila se abre el registro exacto.
+class _HoySection extends ConsumerWidget {
+  const _HoySection({required this.items});
+
+  final List<AgendaItem> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 24, 4, 6),
+          child: Text('Hoy',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        ),
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text('Sin recordatorios para hoy ni mañana'),
+          )
+        else
+          Card(
+            child: Column(
+              children: [
+                for (final item in items)
+                  ListTile(
+                    leading: PetAvatar(
+                        photoPath: item.photoPath,
+                        species: item.species,
+                        size: 40),
+                    title: Text(item.title),
+                    subtitle: Text(fmtDate(item.day)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _abrir(context, ref, item),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _abrir(BuildContext context, WidgetRef ref, AgendaItem item) async {
+    final db = ref.read(databaseProvider);
+    if (item.eventId != null) {
+      // Si el registro se borró con la portada abierta, avisa y no navega.
+      final existe = await (db.select(db.events)
+            ..where((t) => t.id.equals(item.eventId!)))
+          .getSingleOrNull();
+      if (existe == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ese registro ya no existe.')),
+          );
+        }
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PetDetailScreen(
+        petId: item.petId,
+        initialTab: item.isHeat ? PetTab.celo : PetTab.salud,
+        highlightEventId: item.eventId,
+      ),
+    ));
   }
 }
 

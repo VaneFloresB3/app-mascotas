@@ -13,6 +13,8 @@ class Pets extends Table {
   BoolColumn get neutered => boolean().withDefault(const Constant(false))();
   DateTimeColumn get neuteredDate => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  /// Ruta relativa de la foto privada, por ejemplo koinucare_fotos/x.jpg.
+  TextColumn get photoPath => text().nullable()();
 }
 
 /// Registro de celo. Solo aplica a hembras no esterilizadas.
@@ -54,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -62,6 +64,10 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(events, events.nextDate);
+          }
+          if (from < 3) {
+            // Las mascotas existentes conservan sus datos y empiezan sin foto.
+            await m.addColumn(pets, pets.photoPath);
           }
         },
         beforeOpen: (details) async {

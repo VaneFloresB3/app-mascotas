@@ -1,7 +1,9 @@
-import 'pet_mascot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../data/photo_storage.dart';
+import 'pet_photo_field.dart';
 import 'pets_providers.dart';
 
 class AddPetScreen extends ConsumerStatefulWidget {
@@ -17,12 +19,22 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   String _sex = 'female';
   bool _neutered = false;
   bool _saving = false;
+  XFile? _photo;
 
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
   }
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    // Si cierra la galería sin elegir, se conserva la selección anterior.
+    if (picked == null || !mounted) return;
+    setState(() => _photo = picked);
+  }
+
+  void _removePhoto() => setState(() => _photo = null);
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
@@ -34,13 +46,28 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
     }
 
     setState(() => _saving = true);
-    await addPet(
-      ref.read(databaseProvider),
-      name: name,
-      species: _species,
-      sex: _sex,
-      neutered: _neutered,
-    );
+    String? photoPath;
+    try {
+      if (_photo != null) photoPath = await savePetPhoto(_photo!.path);
+      await addPet(
+        ref.read(databaseProvider),
+        name: name,
+        species: _species,
+        sex: _sex,
+        neutered: _neutered,
+        photoPath: photoPath,
+      );
+    } catch (_) {
+      // Si falla el guardado, se borra la copia nueva y se puede reintentar.
+      await deletePetPhoto(photoPath);
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+        );
+      }
+      return;
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -51,11 +78,20 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          PetMascot(species: _species, size: 112),
+          PetPhotoField(
+            name: _nameController.text,
+            species: _species,
+            savedPhoto: null,
+            pendingPhoto: _photo,
+            removed: false,
+            onPick: _pickPhoto,
+            onRemove: _removePhoto,
+          ),
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(labelText: 'Nombre'),
             textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(

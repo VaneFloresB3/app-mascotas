@@ -24,6 +24,7 @@ Future<void> addPet(
   required String species,
   required String sex,
   bool neutered = false,
+  String? photoPath,
 }) {
   return db.into(db.pets).insert(
         PetsCompanion.insert(
@@ -31,6 +32,7 @@ Future<void> addPet(
           species: species,
           sex: sex,
           neutered: Value(neutered),
+          photoPath: Value(photoPath),
         ),
       );
 }
