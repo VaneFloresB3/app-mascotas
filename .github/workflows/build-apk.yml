@@ -53,8 +53,29 @@ jobs:
                   gvy.write_text(s, encoding='utf-8')
           EOF
 
+      - name: Marca KoinuCare (nombre e identificador)
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re
+
+          manifest = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          s = manifest.read_text(encoding='utf-8')
+          s = re.sub(r'android:label="[^"]*"', 'android:label="KoinuCare"', s, count=1)
+          manifest.write_text(s, encoding='utf-8')
+
+          for name in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
+              p = pathlib.Path(name)
+              if p.exists():
+                  s = p.read_text(encoding='utf-8')
+                  s = re.sub(r'applicationId\s*=?\s*"[^"]*"', lambda m: m.group(0).split('"')[0] + '"com.koinucare.app"', s, count=1)
+                  p.write_text(s, encoding='utf-8')
+          EOF
+
       - name: Dependencias
         run: flutter pub get
+
+      - name: Generar íconos de KoinuCare
+        run: dart run flutter_launcher_icons
 
       - name: Generar código de drift
         run: dart run build_runner build --delete-conflicting-outputs
@@ -65,9 +86,12 @@ jobs:
       - name: Compilar APK
         run: flutter build apk --release
 
+      - name: Nombrar APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/KoinuCare.apk
+
       - name: Publicar en Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/app-release.apk
+          name: KoinuCare ${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/KoinuCare.apk
